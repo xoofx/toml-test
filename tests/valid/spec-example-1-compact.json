@@ -2,7 +2,7 @@
     "title": {"type":"string","value":"TOML Example"},
     "owner": {
         "name": {"type":"string","value":"Lance Uppercut"},
-        "dob": {"type":"datetime","value":"1979-05-27T07:32:00-08:00"}
+        "dob": {"type":"datetime","value":"1979-05-27T15:32:00Z"}
     },
     "database": {
         "server": {"type":"string","value":"192.168.1.1"},
