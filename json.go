@@ -3,6 +3,7 @@ package main
 import (
 	"strconv"
 	"time"
+	"strings"
 )
 
 // compareJson consumes the recursive structure of both `expected` and `test`
@@ -137,6 +138,8 @@ func (r result) cmpJsonValues(e, t map[string]interface{}) result {
 			return r.cmpFloats(evalue, tvalue);
 		case "datetime":
 			return r.cmpAsDatetimes(evalue, tvalue);
+		case "datetime-local":
+			return r.cmpAsLocalDateTimes(evalue, tvalue);
 		default:
 			return r.cmpAsStrings(evalue, tvalue);
 		}
@@ -151,7 +154,48 @@ func (r result) cmpAsStrings(e, t string) result {
 	return r
 }
 
+func (r result) cmpAsLocalDateTimes(e, t string) result {
+	ce := strings.Replace(strings.Replace(e, "t", "T", 1), " ", "T", 1)
+	ct := strings.Replace(strings.Replace(t, "t", "T", 1), " ", "T", 1)
+
+	if ce != ct {
+		return r.failedf("Values for key '%s' don't match. Expected a "+
+			"value of '%s' but got '%s'.", r.key, e, t)
+	}
+	return r
+}
+
+
 func (r result) cmpFloats(e, t string) result {
+	// Handle Infinity and NaN
+	tc := strings.ToLower(t)
+	ec := strings.ToLower(e)
+
+	if ec == "nan" || ec == "-nan" || ec == "+nan" {
+		if tc == "nan" || tc == "-nan" || tc == "+nan" {
+			return r
+		} else {
+			return r.failedf("Value for key '%s' don't match. Expected either nan, -nan or +nan but got '%v'.", r.key, tc)
+		}
+	}
+
+	if ec == "inf" || ec == "+inf" {
+		if tc == "inf" || tc == "+inf" {
+			return r
+		} else {
+			return r.failedf("Value for key '%s' don't match. Expected inf or +inf but got '%v'.", r.key, tc)
+		}
+	}
+
+	if ec == "-inf" {
+		if tc == "-inf" {
+			return r
+		} else {
+			return r.failedf("Value for key '%s' don't match. Expected -inf but got '%v'.", r.key, tc)
+		}
+	}
+
+	// Else, compare as regular floats
 	ef, err := strconv.ParseFloat(e, 64)
 	if err != nil {
 		return r.failedf("BUG in test case. Could not read '%s' as a "+
@@ -173,13 +217,13 @@ func (r result) cmpFloats(e, t string) result {
 func (r result) cmpAsDatetimes(e, t string) result {
 	var err error
 
-	ef, err := time.Parse(time.RFC3339Nano, e)
+	ef, err := time.Parse(time.RFC3339Nano, strings.Replace(e, " ", "T", 1))
 	if err != nil {
 		return r.failedf("BUG in test case. Could not read '%s' as a "+
 			"datetime value for key '%s'.", e, r.key)
 	}
 
-	tf, err := time.Parse(time.RFC3339Nano, t)
+	tf, err := time.Parse(time.RFC3339Nano, strings.Replace(t, " ", "T", 1))
 	if err != nil {
 		return r.failedf("Malformed parser output. Could not read '%s' "+
 			"as datetime value for key '%s'.", t, r.key)
